@@ -45,6 +45,14 @@ Kong
 
 =head1 SYNOPSIS
 
+  use Kong;
+  my $kong = Kong->new();
+  $kong->kong_host('http://localhost:8001');
+  $kong->fetch_plugins({name => 'request-transformer'}, sub{
+    my ($kong, $plugins, $err) = @_;
+    # handle yo stuff
+  });
+
 =head1 DESCRIPTION
 
 =head1 METHODS
