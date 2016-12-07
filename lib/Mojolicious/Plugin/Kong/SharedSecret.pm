@@ -14,7 +14,7 @@ has defaults => sub {
     };
 };
 
-sub cache_object {
+sub _cache_object {
     state $cache = Cache::Memory::Simple->new();
     return $cache;
 }
@@ -27,7 +27,7 @@ sub register {
         sub {
             my ($c) = @_;
 
-            my $cache = $self->cache_object();
+            my $cache = $self->_cache_object();
 
             #get secret from header
             my $header_secret
@@ -88,7 +88,7 @@ sub register {
 
     $app->helper(
         'kong_secret_cache' => sub {
-            return $self->cache_object();
+            return $self->_cache_object();
         }
     );
 }
