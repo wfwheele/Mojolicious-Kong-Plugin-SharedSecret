@@ -55,6 +55,14 @@ Kong
 
 =head1 DESCRIPTION
 
+  Currently a module which handles interactions to the kong cluster.  There
+  should be no need to use this module on your own.  Possibily it should be
+  made it's own module.
+
+  Methods call kong asyncrounsly using Mojo::UserAgent, all methods pass the
+  following to callbacks ($kong, $data, $err), and it is up to the caller to
+  check and handle the err.
+
 =head1 METHODS
 
 =head2 kong_host
