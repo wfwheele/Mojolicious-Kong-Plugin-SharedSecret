@@ -48,3 +48,30 @@ sub _map_headers {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Kong::SharedSecret
+
+=head1 DESCRIPTION
+
+This module turns a call to the /plugins route of Kong admin API and fetches
+the shared secret for L<Mojolicious::Plugin::Kong::SharedSecret> .  It probably
+shouldn't be used outside the plugin and it's API is subject to change without
+notice.
+
+=head1 METHODS
+
+=head2 fetch_shared_secret
+
+  Kong::SharedSecret::fetch_shared_secret($kong_url, $header_name, sub{
+    my ($class, $shared_secret, $error) = @_;
+    # have fun
+  });
+
+Takes in the url to reach the kong cluster at and header in which shared secret
+can be found, and a callback as params.
+
+=cut
