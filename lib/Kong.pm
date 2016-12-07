@@ -67,9 +67,24 @@ Kong
 
 =head2 kong_host
 
-  my $kong = Kong->new();
   $kong->kong_host('http://localhost:8001');
   my $kong_host = $kong->kong_host();
 
 setter and getter for kong host, which this module will use to make calls to a
-Kong cluster
+Kong cluster.  Defaults to https://localhost:8001
+
+=head2 fetch_plugins
+
+  $kong->fetch_plugins({name => 'request-transformer'}, sub {
+    my ($kong, $plugins, $err) = @_;
+    if($err){
+      #weep
+    }else{
+      #dance
+    }
+  });
+
+Fetches a list of plugins from the kong cluster.  Filter results by passing in
+a hash which gets turned into query params for the call.
+
+=cut
