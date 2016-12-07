@@ -112,12 +112,52 @@ Mojolicious::Plugin::Kong::SharedSecret - Mojolicious Plugin
   # Mojolicious
   $self->plugin('Kong::SharedSecret');
 
-  # Mojolicious::Lite
-  plugin 'Kong::SharedSecret';
+  # With Options
+  $self->plugin('Kong::SharedSecret', {
+    kong_host => 'http://some-host.org:8001',
+    header_name => 'Super-Secret',
+    cache_seconds => 6000,
+  });
+
+  # Make sure this route can only be accessed when the request comes from Kong.
+  $self->kong_secured_routes->get('/super-secret-route')->to(foo#bar);
 
 =head1 DESCRIPTION
 
-L<Mojolicious::Plugin::Kong::SharedSecret> is a L<Mojolicious> plugin.
+L<Mojolicious::Plugin::Kong::SharedSecret> is a L<Mojolicious> plugin.  This
+plugin is meant to help secure your API to ensure incoming requests only come
+from Kong.  This solution is meant to add an extra layer of security and may be
+especially useful in situations where you might not be able to firewall off your
+application but still want to enforce the use of Kong to access your API.
+
+It assumes that your Kong admin API can also be secured either by Kong
+itself or some other means.  How you do that is up to you ;)
+
+=head1 OPTIONS
+
+=head2 kong_host
+
+URL where this plugin can access the kong cluster API. Defaults to
+http://localhost:8001
+
+=head2 header_name
+
+Name of the header where this plugin should look for the shared secret from Kong.
+Default is Kong-Shared-Secret
+
+=head2 cache_seconds
+
+Amount of time in seconds to cache the shared secret locally so subsequent
+requests do not have to do the full handshake with kong.  Default is 10 minutes.
+
+=head1 Helpers
+
+This module registers the folliwing helpers:
+
+=head2 kong_secured_routes
+
+Returns a router for which all routes under it will return 403 unless the request
+came through Kong.
 
 =head1 METHODS
 
