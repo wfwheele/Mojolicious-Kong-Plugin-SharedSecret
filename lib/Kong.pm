@@ -43,4 +43,17 @@ __END__
 
 Kong
 
+=head1 SYNOPSIS
+
 =head1 DESCRIPTION
+
+=head1 METHODS
+
+=head2 kong_host
+
+  my $kong = Kong->new();
+  $kong->kong_host('http://localhost:8001');
+  my $kong_host = $kong->kong_host();
+
+setter and getter for kong host, which this module will use to make calls to a
+Kong cluster
