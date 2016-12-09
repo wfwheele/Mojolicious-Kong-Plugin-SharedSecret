@@ -93,7 +93,7 @@ notice.
 
 =head2 fetch_shared_secret
 
-  Kong::SharedSecret::fetch_shared_secret($kong_url, $header_name, sub{
+  $shared_secret->fetch_shared_secret($kong_url, $header_name, sub{
     my ($class, $shared_secret, $error) = @_;
     # have fun
   });
