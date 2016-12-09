@@ -1,7 +1,8 @@
-package Kong;
+package Mojolicious::Plugin::Kong::SharedSecret::Kong;
 use Mojo::Base -base;
 use Mojo::UserAgent;
 use JSON::XS;
+use Carp qw/confess/;
 
 has '_kong_host' => sub {
     return Mojo::URL->new('http://localhost:8001');
@@ -9,10 +10,10 @@ has '_kong_host' => sub {
 
 sub kong_host {
     my ( $self, $arg ) = @_;
-    if ($arg) {
+    if ( defined $arg ) {
         return $self->_kong_host( Mojo::URL->new($arg) );
     }
-    return $self->_kong_host();
+    return $self->_kong_host()->clone();
 }
 
 has 'ua' => sub {
@@ -21,15 +22,19 @@ has 'ua' => sub {
 
 sub fetch_plugins {
     my ( $self, $filters, $cb ) = @_;
-    my $url
-        = $self->_kong_host()->query( Mojo::Parameters->new( %{$filters} ) );
+    my $url = $self->kong_host()->path('/plugins')
+        ->query( Mojo::Parameters->new( %{$filters} ) );
     $self->ua()->get(
         $url => sub {
             my ( $ua, $tx ) = @_;
-            my $err     = $tx->error();
-            my $plugins = decode_json( $tx->res->body )->{data}
-                if $tx->res->body;
-            $cb->( $self, $plugins, $err );
+            my $err = $tx->error();
+            if ( defined $err ) {
+                $cb->( $self, undef, $err );
+            }
+            else {
+                my $plugins = decode_json( $tx->res->body )->{data};
+                $cb->( $self, $plugins );
+            }
         }
     );
 }
