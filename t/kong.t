@@ -2,9 +2,14 @@ use Mojo::Base -strict;
 use Test::More;
 use Test::MockModule;
 
-BEGIN { use_ok('Kong') || BAIL_OUT('could not use Kong module') }
+BEGIN {
+    use_ok('Mojolicious::Plugin::Kong::SharedSecret::Kong')
+        || BAIL_OUT('could not use Kong module');
+}
 
-my $kong = Kong->new();
+my $module = 'Mojolicious::Plugin::Kong::SharedSecret::Kong';
+
+my $kong = $module->new();
 
 can_ok( $kong, 'kong_host' );
 
@@ -17,7 +22,8 @@ is( $kong->kong_host(), 'http://foobar.org', 'kong host set successfully' );
 subtest 'fetch_plugins' => sub {
     subtest 'success' => sub {
         ### setup
-        my $kong   = Kong->new();
+        my $kong = $module->new();
+        $kong->kong_host('http://foobar.org:8001');
         my $mockua = Test::MockModule->new('Mojo::UserAgent');
         my $url_to_test;
         $mockua->mock(
@@ -45,11 +51,15 @@ subtest 'fetch_plugins' => sub {
         );
         is( $url_to_test->query->param('name'),
             'request-transformer', 'query params built' );
+        is( $url_to_test->host(), 'foobar.org', 'correct kong host used' );
+        is( $url_to_test->port(), '8001',       'correct kong port used' );
+        is( $url_to_test->path()->to_string(),
+            '/plugins', 'correct api path used' );
     };
 
     subtest 'error' => sub {
         ### setup
-        my $kong   = Kong->new();
+        my $kong   = $module->new();
         my $mockua = Test::MockModule->new('Mojo::UserAgent');
         $mockua->mock(
             'get',
