@@ -9,6 +9,10 @@ WriteMakefile(
     AUTHOR       => 'William Wheeler<wfwheele@cpan.org>',
     BUILD_REQUIRES =>
         { 'ExtUtils::MakeMaker' => 0, 'Test::MockModule' => '0.11' },
-    PREREQ_PM => { 'Mojolicious' => '7.09', 'Cache::Memory::Simple' => '1.03' },
+    PREREQ_PM => {
+        'Mojolicious'           => '7.09',
+        'Cache::Memory::Simple' => '1.03',
+        'JSON::XS'              => '3.02'
+    },
     test => { TESTS => 't/*.t' }
 );
