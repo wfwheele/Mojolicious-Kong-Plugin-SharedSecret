@@ -1,6 +1,6 @@
 package Mojolicious::Plugin::Kong::SharedSecret;
 use Mojo::Base 'Mojolicious::Plugin';
-use Kong::SharedSecret;
+use Mojolicious::Plugin::Kong::SharedSecret::SharedSecret;
 use Cache::Memory::Simple;
 use feature qw/state/;
 
@@ -9,7 +9,7 @@ our $VERSION = '0.01';
 has defaults => sub {
     return {
         header_name   => 'Kong-Shared-Secret',
-        kong_host     => 'http://localhost:8001',
+        kong_url      => 'http://localhost:8001',
         cache_seconds => ( 60 * 10 ),
     };
 };
@@ -22,7 +22,11 @@ sub _cache_object {
 sub register {
     my ( $self, $app, $conf_arg ) = @_;
     my $conf = $self->_merge_default_conf($conf_arg);
-
+    my $shared_secret_obj
+        = Mojolicious::Plugin::Kong::SharedSecret::SharedSecret->new(
+        kong_url    => $conf->{kong_url},
+        header_name => $conf->{header_name}
+        );
     my $r = $app->routes->under(
         sub {
             my ($c) = @_;
@@ -32,36 +36,34 @@ sub register {
             #get secret from header
             my $header_secret
                 = $c->req()->headers()->header( $conf->{header_name} );
-            $c->render( text => 'Unauthorized', status => 403 )
-                if not $header_secret;
-            my $cached_secret = $cache->get( $conf->{header_name} );
-            if ($cached_secret) {
-                say "cached_secret: $cached_secret";
-                my $return;
-                if ( $cached_secret eq $header_secret ) {
-                    $return = 1;
-                }
-                else {
-                    $c->render( text => 'Unauthorized', status => 403 );
-                }
-                return $return;
+            if ( not $header_secret ) {
+                $c->render( text => 'Unauthorized', status => 403 );
+                return;
             }
 
             #fetch secret from kong
             $c->delay(
                 sub {
-                    my $delay = shift;
-                    Kong::SharedSecret::fetch_shared_secret( $conf->{kong_url},
-                        $conf->{header_name}, $delay->begin() );
+                    my $delay         = shift;
+                    my $cached_secret = $cache->get( $conf->{header_name} );
+                    if ($cached_secret) {
+                        $delay->pass($cached_secret);
+                    }
+                    else {
+                        $shared_secret_obj->fetch_shared_secret(
+                            $delay->begin() );
+                    }
                     return;
                 },
                 sub {
                     #compare
                     my ( $delay, $secret, $err ) = @_;
+                    $c->app->log->info($secret);
                     if ($err) {
+                        $c->app->log->error( $c->dumper($err) );
                         $c->render(
                             text   => $err->{message},
-                            status => $err->{code}
+                            status => $err->{code} // 500
                         );
                     }
                     else {
