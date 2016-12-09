@@ -8,6 +8,8 @@ use Test::MockModule;
 plugin 'Kong::SharedSecret';
 
 my $kong_secured_routes = app->kong_secured_routes();
+my $kong_shared_secret
+    = 'Mojolicious::Plugin::Kong::SharedSecret::SharedSecret';
 
 $kong_secured_routes->get('/')->to(
     cb => sub {
@@ -22,12 +24,12 @@ subtest 'unauthorized when header not present' => sub {
 };
 
 subtest 'unauthorized when secret does not match' => sub {
-    my $mock_shared_secret = Test::MockModule->new('Kong::SharedSecret');
+    my $mock_shared_secret = Test::MockModule->new($kong_shared_secret);
     $mock_shared_secret->mock(
         'fetch_shared_secret',
         sub {
-            my ( undef, undef, $cb ) = @_;
-            $cb->( 'Mock::SharedSecret', 'barfoo' );
+            my ( $self, $cb ) = @_;
+            $cb->( $self, 'barfoo' );
         }
     );
 
@@ -36,8 +38,8 @@ subtest 'unauthorized when secret does not match' => sub {
 
     $mock_shared_secret->mock(
         'fetch_shared_secret' => sub {
-            my ( undef, undef, $cb ) = @_;
-            $cb->( "Mock::SharedSecret", 'foobar' );
+            my ( $self, $cb ) = @_;
+            $cb->( $self, 'foobar' );
             fail("should have compared secret to cached secret");
             return;
         }
@@ -51,26 +53,23 @@ subtest 'unauthorized when secret does not match' => sub {
 };
 
 subtest 'authorized when given header matches kong stored secret' => sub {
-    my $mock_shared_secret = Test::MockModule->new('Kong::SharedSecret');
+    my $mock_shared_secret = Test::MockModule->new($kong_shared_secret);
     $mock_shared_secret->mock(
         'fetch_shared_secret' => sub {
-            my ( undef, undef, $cb ) = @_;
-            $cb->( 'Mock::SharedSecret', 'foobar' );
+            my ( $self, $cb ) = @_;
+            $cb->( $self, 'foobar' );
         }
     );
     $t->get_ok( '/' => { 'Kong-Shared-Secret' => 'foobar' } )->status_is(200)
         ->content_is('Hello Mojo!');
 
-    # is( $t->app->kong_secret_cache->get('Kong-Shared-Secret'),
-    #       'foobar', 'cache was set' );
-
     my $callback_was_called = 0;
     $mock_shared_secret->mock(
         'fetch_shared_secret' => sub {
-            my ( undef, undef, $cb ) = @_;
+            my ( $self, $cb ) = @_;
             say "in callback";
             $callback_was_called = 1;
-            $cb->( "Mock::SharedSecret", 'foobar' );
+            $cb->( $self, 'barbar' );
             return;
         }
     );
@@ -79,6 +78,37 @@ subtest 'authorized when given header matches kong stored secret' => sub {
         ->content_is('Hello Mojo!');
 
     ok( !$callback_was_called, 'secret should have been pulled from cache' );
+
+    $t->app->kong_secret_cache->delete_all();
+};
+
+subtest 'render err if err' => sub {
+    my $mock_shared_secret = Test::MockModule->new($kong_shared_secret);
+    $mock_shared_secret->mock(
+        'fetch_shared_secret',
+        sub {
+            my ( $self, $cb ) = @_;
+            $cb->( $self, undef, { message => 'some crazy stuff went down' } );
+        }
+    );
+
+    $t->get_ok( '/' => { 'Kong-Shared-Secret' => 'foobar' } )->status_is(500)
+        ->content_is('some crazy stuff went down');
+
+    $t->app->kong_secret_cache->delete_all();
+
+    $mock_shared_secret->mock(
+        'fetch_shared_secret' => sub {
+            my ( $self, $cb ) = @_;
+            $cb->(
+                $self, undef, { message => 'danger! high voltage', code => 403 }
+            );
+            return;
+        }
+    );
+
+    $t->get_ok( '/' => { 'Kong-Shared-Secret' => 'foobar' } )->status_is(403)
+        ->content_is('danger! high voltage');
 
     $t->app->kong_secret_cache->delete_all();
 };
