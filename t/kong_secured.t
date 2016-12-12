@@ -36,17 +36,17 @@ subtest 'unauthorized when secret does not match' => sub {
     $t->get_ok( '/' => { 'Kong-Shared-Secret' => 'foobar' } )->status_is(403)
         ->content_is('Unauthorized');
 
-    $mock_shared_secret->mock(
-        'fetch_shared_secret' => sub {
-            my ( $self, $cb ) = @_;
-            $cb->( $self, 'foobar' );
-            fail("should have compared secret to cached secret");
-            return;
-        }
-    );
-
-    $t->get_ok( '/' => { 'Kong-Shared-Secret' => 'foobar' } )->status_is(403)
-        ->content_is('Unauthorized');
+    # $mock_shared_secret->mock(
+    #     'fetch_shared_secret' => sub {
+    #         my ( $self, $cb ) = @_;
+    #         $cb->( $self, 'foobar' );
+    #         fail("should have compared secret to cached secret");
+    #         return;
+    #     }
+    # );
+    #
+    # $t->get_ok( '/' => { 'Kong-Shared-Secret' => 'foobar' } )->status_is(403)
+    #     ->content_is('Unauthorized');
 
     $t->app->kong_secret_cache->delete_all();
 
@@ -80,6 +80,29 @@ subtest 'authorized when given header matches kong stored secret' => sub {
     ok( !$callback_was_called, 'secret should have been pulled from cache' );
 
     $t->app->kong_secret_cache->delete_all();
+};
+
+subtest 'fetch secret from call when cached header does not match' => sub {
+
+    # secret was changed recently
+    my $mock_shared_secret = Test::MockModule->new($kong_shared_secret);
+    $mock_shared_secret->mock(
+        'fetch_shared_secret' => sub {
+            my ( $kss, $cb ) = @_;
+            $cb->( $kss, 'barbar' );
+        }
+    );
+
+    # old cached secret
+    my $mock_cached_object = Test::MockModule->new('Cache::Memory::Simple');
+    $mock_cached_object->mock(
+        'get' => sub {
+            return 'foobar';
+        }
+    );
+
+    $t->get_ok( '/' => { 'Kong-Shared-Secret' => 'barbar' } )->status_is(200)
+        ->content_is('Hello Mojo!');
 };
 
 subtest 'render err if err' => sub {
