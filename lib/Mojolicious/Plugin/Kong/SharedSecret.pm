@@ -33,7 +33,6 @@ sub register {
 
             my $cache = $self->_cache_object();
 
-            #get secret from header
             my $header_secret
                 = $c->req()->headers()->header( $conf->{header_name} );
             if ( not $header_secret ) {
@@ -41,13 +40,13 @@ sub register {
                 return;
             }
 
-            #fetch secret from kong
             $c->delay(
                 sub {
                     my $delay         = shift;
                     my $cached_secret = $cache->get( $conf->{header_name} );
-                    if ($cached_secret) {
-                        $delay->pass($cached_secret);
+                    if ( $cached_secret and $cached_secret eq $header_secret ) {
+                        $c->continue();
+                        return;
                     }
                     else {
                         $shared_secret_obj->fetch_shared_secret(
@@ -56,7 +55,6 @@ sub register {
                     return;
                 },
                 sub {
-                    #compare
                     my ( $delay, $secret, $err ) = @_;
                     $c->app->log->info($secret);
                     if ($err) {
